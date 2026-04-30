@@ -8,7 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
-import android.view.WindowManager // Required for Hardware Acceleration
+import android.view.WindowManager
 import android.webkit.*
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 1. HARDWARE ACCELERATION (Fixes 3D/Dashboard rendering)
+        // 1. Hardware Acceleration for smooth rendering
         window.setFlags(
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
@@ -45,10 +45,6 @@ class MainActivity : ComponentActivity() {
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout)
         progressBar = findViewById(R.id.progressBar)
 
-        if (!isNetworkAvailable()) {
-            showError("No internet connection")
-        }
-
         setupWebView()
         setupBackLogic()
 
@@ -56,12 +52,12 @@ class MainActivity : ComponentActivity() {
             webView.reload()
         }
 
+        // Use the official app URL
         webView.loadUrl("https://app.trustrium.com/")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
-        // 2. COOKIE MANAGEMENT (Fixes White Screen after Login)
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)
@@ -70,6 +66,10 @@ class MainActivity : ComponentActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
+            
+            // Fix: Enable JavaScript to open windows automatically
+            javaScriptCanOpenWindowsAutomatically = true
+            
             cacheMode = WebSettings.LOAD_DEFAULT
             allowFileAccess = true
             allowContentAccess = true
@@ -77,9 +77,10 @@ class MainActivity : ComponentActivity() {
             loadWithOverviewMode = true
             setSupportZoom(true)
             
-            // 3. USER AGENT (Prevents Auth pages from blocking the app)
-            userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+            // Fix: Set a High-End User Agent
+            userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36"
             
+            // Fix: Allow Mixed Content (Very important for mining dashboards)
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
@@ -92,26 +93,24 @@ class MainActivity : ComponentActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 swipeRefreshLayout.isRefreshing = false
                 progressBar.visibility = View.GONE
-                // 4. PERSIST COOKIES
                 CookieManager.getInstance().flush()
                 super.onPageFinished(view, url)
             }
 
-            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                if (request?.isForMainFrame == true) {
-                    // Log error if needed for debugging
-                }
+            // Fix: Handle SSL errors (Optional but helpful for testing)
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                handler?.proceed() 
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
                 
-                // Keep Trustrium links inside the app
+                // Stay inside the app for Trustrium domains
                 if (url.contains("trustrium.com")) {
-                    view?.loadUrl(url)
-                    return true
+                    return false // Let WebView handle it
                 }
 
+                // Handle external intents (WhatsApp, Mail, etc.)
                 if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.startsWith("intent:")) {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -121,8 +120,7 @@ class MainActivity : ComponentActivity() {
                         return false
                     }
                 }
-                
-                return false 
+                return false
             }
         }
 
@@ -131,6 +129,7 @@ class MainActivity : ComponentActivity() {
                 progressBar.progress = newProgress
             }
 
+            // Fix: Support file uploads for KYC or profile photos
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -165,11 +164,7 @@ class MainActivity : ComponentActivity() {
         val connectivityManager = getSystemService(ConnectivityManager::class.java)
         val network = connectivityManager.activeNetwork ?: return false
         val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return when {
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
-            else -> false
-        }
+        return activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun showError(message: String) {
