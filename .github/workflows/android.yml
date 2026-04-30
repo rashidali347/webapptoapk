@@ -8,18 +8,12 @@ on:
 
 jobs:
   build:
-    name: Build Android App
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the source code
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Step 2: Set up Java Environment
-      # Using JDK 17 as it is the requirement for modern Android Gradle Plugins
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -27,26 +21,14 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # Step 3: Fix Gradle Permissions
-      # This prevents "Permission Denied" errors during execution
-      - name: Grant Execute Permission for Gradlew
+      - name: Change Wrapper Permissions
         run: chmod +x gradlew
 
-      # Step 4: Validate/Generate Wrapper
-      # Ensures the build doesn't fail if the wrapper is missing or corrupted
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      # Step 5: Run Build
-      # Generates the Debug APK
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
-      # Step 6: Upload Build Result
-      # This makes the APK available for download in the "Actions" tab
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: app-debug
           path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
