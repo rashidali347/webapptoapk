@@ -11,24 +11,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: 1. Get Code from Repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: 2. Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
 
-      - name: Change Wrapper Permissions
+      - name: 3. Create Missing Gradle Jar
+        # This command creates the .jar file that you said is missing
+        run: gradle wrapper 
+
+      - name: 4. Give Permission to Run
         run: chmod +x gradlew
 
-      - name: Build with Gradle
+      - name: 5. Build the App
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: 6. Save the APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: my-app-apk
           path: app/build/outputs/apk/debug/*.apk
