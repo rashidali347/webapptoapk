@@ -1,0 +1,2 @@
+rootProject.name = "Trustrium Mining"
+include ':app'
