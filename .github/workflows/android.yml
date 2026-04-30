@@ -11,27 +11,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 1. Get Code from Repository
+      - name: 1. Get Code
         uses: actions/checkout@v4
 
-      - name: 2. Set up Java
+      - name: 2. Set up Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: 3. Create Missing Gradle Jar
-        # This command creates the .jar file that you said is missing
-        run: gradle wrapper 
+      - name: 3. Setup Gradle & Fix Missing Files
+        # This official tool is much better than the "gradle wrapper" command
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5 # We use a stable version to avoid the error in your screenshot
 
-      - name: 4. Give Permission to Run
-        run: chmod +x gradlew
+      - name: 4. Build the App
+        # We run 'gradle assembleDebug' directly instead of './gradlew'
+        run: gradle assembleDebug
 
-      - name: 5. Build the App
-        run: ./gradlew assembleDebug
-
-      - name: 6. Save the APK
+      - name: 5. Save the APK
         uses: actions/upload-artifact@v4
         with:
           name: my-app-apk
